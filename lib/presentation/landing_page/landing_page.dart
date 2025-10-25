@@ -263,7 +263,7 @@ class _LandingPageState extends State<LandingPage>
             ),
             SizedBox(height: 1.h),
             Text(
-              'Take a photo to identify snake species',
+              'Take a photo of snake species or snake bite mark',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.white.withValues(alpha: 0.9),
                   ),
@@ -315,25 +315,27 @@ class _LandingPageState extends State<LandingPage>
               ),
             ),
             SizedBox(width: 4.w),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AI ASSISTANT',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 1.0,
-                      ),
-                ),
-                SizedBox(height: 0.5.h),
-                Text(
-                  'Get instant medical guidance',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                ),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AI ASSISTANT',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.0,
+                        ),
+                  ),
+                  SizedBox(height: 0.5.h),
+                  Text(
+                    'Get instant medical guidance',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
