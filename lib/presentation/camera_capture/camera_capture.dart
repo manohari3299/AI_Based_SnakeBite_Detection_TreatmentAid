@@ -352,7 +352,7 @@ class _CameraCaptureState extends State<CameraCapture>
   }
 
   void _closeCamera() {
-    Navigator.pushReplacementNamed(context, '/home-dashboard');
+    Navigator.pushReplacementNamed(context, '/landing-page');
   }
 
   @override

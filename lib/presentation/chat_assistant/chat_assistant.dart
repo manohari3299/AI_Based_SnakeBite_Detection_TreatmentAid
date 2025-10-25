@@ -18,9 +18,7 @@ class ChatAssistant extends StatefulWidget {
   State<ChatAssistant> createState() => _ChatAssistantState();
 }
 
-class _ChatAssistantState extends State<ChatAssistant>
-    with TickerProviderStateMixin {
-  late TabController _tabController;
+class _ChatAssistantState extends State<ChatAssistant> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final RefreshController _refreshController = RefreshController();
@@ -63,14 +61,12 @@ class _ChatAssistantState extends State<ChatAssistant>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this, initialIndex: 4);
     _initializeConnectivity();
     _loadInitialMessages();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     _refreshController.dispose();
@@ -385,19 +381,37 @@ class _ChatAssistantState extends State<ChatAssistant>
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          _buildTabBar(),
+          _buildQuickActions(),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildPlaceholderTab('Home Dashboard'),
-                _buildPlaceholderTab('Camera Capture'),
-                _buildPlaceholderTab('Species Results'),
-                _buildPlaceholderTab('Treatment Protocols'),
-                _buildChatTab(),
-                _buildPlaceholderTab('History'),
-              ],
+            child: RefreshIndicator(
+              onRefresh: _refreshMessages,
+              color: AppTheme.lightTheme.primaryColor,
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: EdgeInsets.symmetric(vertical: 2.h),
+                itemCount: _messages.length + (_isLoading ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == _messages.length && _isLoading) {
+                    return _buildLoadingIndicator();
+                  }
+
+                  final message = _messages[index];
+                  return MessageBubbleWidget(
+                    message: message["message"],
+                    isUser: message["isUser"],
+                    source: message["source"],
+                    timestamp: message["timestamp"],
+                    onLongPress: () => _showMessageOptions(message["message"]),
+                  );
+                },
+              ),
             ),
+          ),
+          MessageInputWidget(
+            controller: _messageController,
+            onSend: _sendMessage,
+            onVoiceInput: _handleVoiceInput,
+            isRecording: _isRecording,
           ),
         ],
       ),
@@ -409,6 +423,14 @@ class _ChatAssistantState extends State<ChatAssistant>
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       elevation: 2,
       shadowColor: AppTheme.shadowColor,
+      leading: IconButton(
+        icon: CustomIconWidget(
+          iconName: 'arrow_back',
+          color: AppTheme.lightTheme.primaryColor,
+          size: 6.w,
+        ),
+        onPressed: () => Navigator.pushReplacementNamed(context, '/landing-page'),
+      ),
       title: Row(
         children: [
           CustomIconWidget(
@@ -441,70 +463,6 @@ class _ChatAssistantState extends State<ChatAssistant>
       actions: [
         ConnectivityStatusWidget(isOnline: _isOnline),
         SizedBox(width: 4.w),
-      ],
-    );
-  }
-
-  Widget _buildTabBar() {
-    return Container(
-      color: AppTheme.lightTheme.colorScheme.surface,
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        indicatorColor: AppTheme.lightTheme.primaryColor,
-        labelColor: AppTheme.lightTheme.primaryColor,
-        unselectedLabelColor: AppTheme.textMediumEmphasisLight,
-        labelStyle: AppTheme.lightTheme.textTheme.labelMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: AppTheme.lightTheme.textTheme.labelMedium,
-        tabs: const [
-          Tab(text: 'Home'),
-          Tab(text: 'Camera'),
-          Tab(text: 'Results'),
-          Tab(text: 'Treatment'),
-          Tab(text: 'Chat'),
-          Tab(text: 'History'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatTab() {
-    return Column(
-      children: [
-        _buildQuickActions(),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _refreshMessages,
-            color: AppTheme.lightTheme.primaryColor,
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: EdgeInsets.symmetric(vertical: 2.h),
-              itemCount: _messages.length + (_isLoading ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _messages.length && _isLoading) {
-                  return _buildLoadingIndicator();
-                }
-
-                final message = _messages[index];
-                return MessageBubbleWidget(
-                  message: message["message"],
-                  isUser: message["isUser"],
-                  source: message["source"],
-                  timestamp: message["timestamp"],
-                  onLongPress: () => _showMessageOptions(message["message"]),
-                );
-              },
-            ),
-          ),
-        ),
-        MessageInputWidget(
-          controller: _messageController,
-          onSend: _sendMessage,
-          onVoiceInput: _handleVoiceInput,
-          isRecording: _isRecording,
-        ),
       ],
     );
   }
@@ -615,36 +573,6 @@ class _ChatAssistantState extends State<ChatAssistant>
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderTab(String tabName) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CustomIconWidget(
-            iconName: 'construction',
-            color: AppTheme.textMediumEmphasisLight,
-            size: 15.w,
-          ),
-          SizedBox(height: 3.h),
-          Text(
-            '$tabName Screen',
-            style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
-              color: AppTheme.textMediumEmphasisLight,
-            ),
-          ),
-          SizedBox(height: 1.h),
-          Text(
-            'This screen will be implemented in the full application',
-            textAlign: TextAlign.center,
-            style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textDisabledLight,
             ),
           ),
         ],
