@@ -6,6 +6,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/api_service.dart';
 import './widgets/connectivity_status_widget.dart';
 import './widgets/message_bubble_widget.dart';
 import './widgets/message_input_widget.dart';
@@ -22,11 +23,14 @@ class _ChatAssistantState extends State<ChatAssistant> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final RefreshController _refreshController = RefreshController();
+  final ApiService _apiService = ApiService();
 
   bool _isOnline = false;
   bool _isRecording = false;
   bool _isLoading = false;
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  String? _conversationId;
+  String? _currentSpeciesName;
 
   final List<Map<String, dynamic>> _messages = [];
 
@@ -61,6 +65,7 @@ class _ChatAssistantState extends State<ChatAssistant> {
   @override
   void initState() {
     super.initState();
+    _apiService.initialize();
     _initializeConnectivity();
     _loadInitialMessages();
   }
@@ -158,19 +163,49 @@ class _ChatAssistantState extends State<ChatAssistant> {
   }
 
   Future<void> _processOnlineQuery(String query) async {
-    // Simulate API call to LLaMA backend
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Call the FastAPI backend with LLM
+      final response = await _apiService.chat(
+        message: query,
+        userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
+        conversationId: _conversationId,
+        speciesName: _currentSpeciesName,
+      );
 
-    String response = _generateAIResponse(query);
+      // Update conversation ID
+      if (response.containsKey('conversation_id')) {
+        _conversationId = response['conversation_id'] as String?;
+      }
 
-    setState(() {
-      _messages.add({
-        "message": response,
-        "isUser": false,
-        "source": "AI Medical Assistant",
-        "timestamp": DateTime.now(),
+      // Update species context if provided
+      if (response.containsKey('species_context')) {
+        _currentSpeciesName = response['species_context'] as String?;
+      }
+
+      final assistantMessage = response['response'] as String? ?? 
+          'Sorry, I could not process your request.';
+
+      setState(() {
+        _messages.add({
+          "message": assistantMessage,
+          "isUser": false,
+          "source": "AI Medical Assistant (LLM)",
+          "timestamp": DateTime.now(),
+        });
       });
-    });
+    } catch (e) {
+      debugPrint('Online query error: $e');
+      
+      // Fallback to local response if API fails
+      setState(() {
+        _messages.add({
+          "message": "I'm having trouble connecting to the AI assistant. Here's some general guidance: ${_searchLocalDatabase(query)}",
+          "isUser": false,
+          "source": "Local Database (Fallback)",
+          "timestamp": DateTime.now(),
+        });
+      });
+    }
   }
 
   Future<void> _processOfflineQuery(String query) async {

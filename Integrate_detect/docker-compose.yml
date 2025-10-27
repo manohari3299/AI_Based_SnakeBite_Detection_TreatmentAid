@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      SKIP_MODEL_LOADING: "0"
+      API_KEY: "changeme"
+      SNAKE_MODEL_PATH: /models/model.pkl
+      BITE_MODEL_PATH: /models/snake_bite_best_densenet.pth
+      SPECIES_CSV: /models/species.csv
+      TREATMENT_XLSX: /models/treatment.xlsx
+      ALLOWED_ORIGINS: "*"
+    volumes:
+      - ./models:/models:ro
+    restart: unless-stopped

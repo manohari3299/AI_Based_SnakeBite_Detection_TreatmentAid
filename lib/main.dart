@@ -3,10 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../core/app_export.dart';
+import '../services/api_service.dart';
 import '../widgets/custom_error_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize API Service
+  ApiService().initialize();
 
   // 🚨 CRITICAL: Custom error handling - DO NOT REMOVE
   ErrorWidget.builder = (FlutterErrorDetails details) {

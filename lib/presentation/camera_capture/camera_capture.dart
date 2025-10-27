@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -5,8 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sizer/sizer.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 import '../../core/app_export.dart';
+import '../../services/api_service.dart';
 import './widgets/camera_controls_widget.dart';
 import './widgets/camera_overlay_widget.dart';
 import './widgets/focus_indicator_widget.dart';
@@ -332,16 +335,82 @@ class _CameraCaptureState extends State<CameraCapture>
     }
   }
 
-  void _usePhoto() {
-    if (_capturedImage != null) {
-      Navigator.pushNamed(
-        context,
-        '/species-identification-results',
-        arguments: {
-          'imagePath': _capturedImage!.path,
-          'timestamp': DateTime.now(),
-        },
+  Future<void> _usePhoto() async {
+    if (_capturedImage == null) return;
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(6.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(4.w),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                color: AppTheme.lightTheme.colorScheme.primary,
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                'Analyzing image...',
+                style: AppTheme.lightTheme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Call API to identify species
+      final apiService = ApiService();
+      final imageFile = File(_capturedImage!.path);
+      final result = await apiService.predictSpecies(
+        imageFile,
+        userId: 'user_${DateTime.now().millisecondsSinceEpoch}',
       );
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        
+        // Navigate to results page with API data
+        Navigator.pushNamed(
+          context,
+          '/species-identification-results',
+          arguments: {
+            'imagePath': _capturedImage!.path,
+            'timestamp': DateTime.now(),
+            'apiResult': result,
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        
+        Fluttertoast.showToast(
+          msg: 'Error: ${e.toString()}',
+          backgroundColor: AppTheme.errorLight,
+          textColor: Colors.white,
+          toastLength: Toast.LENGTH_LONG,
+        );
+        
+        // Still navigate but without API data (offline mode)
+        Navigator.pushNamed(
+          context,
+          '/species-identification-results',
+          arguments: {
+            'imagePath': _capturedImage!.path,
+            'timestamp': DateTime.now(),
+            'error': e.toString(),
+          },
+        );
+      }
     }
   }
 
