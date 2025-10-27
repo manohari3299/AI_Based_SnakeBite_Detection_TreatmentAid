@@ -111,18 +111,30 @@ class _CameraCaptureState extends State<CameraCapture>
   }
 
   Future<void> _checkConnectivity() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    setState(() {
-      _isConnected = connectivityResult != ConnectivityResult.none;
-    });
-
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
       if (mounted) {
         setState(() {
-          _isConnected = result != ConnectivityResult.none;
+          _isConnected = connectivityResult != ConnectivityResult.none;
         });
       }
-    });
+
+      Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+        if (mounted) {
+          setState(() {
+            _isConnected = result != ConnectivityResult.none;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Connectivity check error: $e');
+      // Default to connected mode if connectivity check fails
+      if (mounted) {
+        setState(() {
+          _isConnected = true;
+        });
+      }
+    }
   }
 
   Future<bool> _requestCameraPermission() async {

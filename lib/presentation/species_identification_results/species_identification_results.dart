@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
@@ -19,72 +20,119 @@ class _SpeciesIdentificationResultsState
     extends State<SpeciesIdentificationResults> {
   bool _isOfflineMode = false;
   bool _isLoading = false;
+  String? _imagePath;
 
-  // Mock identification results data
-  final Map<String, dynamic> _identificationResult = {
+  // Default/mock identification results data (used as fallback)
+  Map<String, dynamic> _identificationResult = {
     "id": 1,
-    "commonName": "Eastern Diamondback Rattlesnake",
-    "scientificName": "Crotalus adamanteus",
-    "family": "Viperidae",
-    "subfamily": "Crotalinae",
-    "genus": "Crotalus",
-    "venomous": true,
-    "confidence": 87.5,
-    "distribution":
-        "Southeastern United States, from North Carolina to Florida and west to Louisiana",
-    "characteristics":
-        "Large, heavy-bodied snake with distinctive diamond-shaped patterns along the back. Gray to brown coloration with dark diamond patterns outlined in white or yellow. Prominent rattle at tail end.",
-    "habitat":
-        "Pine forests, coastal plains, scrublands, and palmetto thickets",
-    "warningMessage":
-        "Extremely dangerous - possesses potent hemotoxic venom that can cause severe tissue damage and death",
-    "imageUrl":
-        "https://images.pexels.com/photos/33535/snake-rainbow-boa-reptile-scale.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "commonName": "Unknown Species",
+    "scientificName": "Processing...",
+    "family": "Unknown",
+    "subfamily": "Unknown",
+    "genus": "Unknown",
+    "venomous": false,
+    "confidence": 0.0,
+    "distribution": "Data not available",
+    "characteristics": "Analyzing image...",
+    "habitat": "Data not available",
+    "warningMessage": "Unable to identify species from image",
+    "imageUrl": "",
   };
 
-  final List<Map<String, dynamic>> _alternativeSpecies = [
-    {
-      "id": 2,
-      "commonName": "Timber Rattlesnake",
-      "scientificName": "Crotalus horridus",
-      "family": "Viperidae",
-      "subfamily": "Crotalinae",
-      "genus": "Crotalus",
-      "venomous": true,
-      "confidence": 72.3,
-      "distribution": "Eastern United States",
-      "characteristics": "Yellow to brown with dark crossbands",
-    },
-    {
-      "id": 3,
-      "commonName": "Eastern Hognose Snake",
-      "scientificName": "Heterodon platirhinos",
-      "family": "Colubridae",
-      "subfamily": "Xenodontinae",
-      "genus": "Heterodon",
-      "venomous": false,
-      "confidence": 68.1,
-      "distribution": "Eastern North America",
-      "characteristics": "Upturned snout, variable coloration with blotches",
-    },
-    {
-      "id": 4,
-      "commonName": "Pine Snake",
-      "scientificName": "Pituophis melanoleucus",
-      "family": "Colubridae",
-      "subfamily": "Colubrinae",
-      "genus": "Pituophis",
-      "venomous": false,
-      "confidence": 61.7,
-      "distribution": "Eastern United States",
-      "characteristics": "Large, powerful constrictor with keeled scales",
-    },
-  ];
+  List<Map<String, dynamic>> _alternativeSpecies = [];
 
   @override
   void initState() {
     super.initState();
     _checkConnectivity();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Only process arguments once
+    if (_imagePath == null) {
+      // Get navigation arguments
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      
+      if (args != null) {
+        debugPrint('Received arguments: ${args.keys}');
+        
+        final imagePath = args['imagePath'] as String?;
+        final apiResult = args['apiResult'] as Map<String, dynamic>?;
+        
+        debugPrint('Image path: $imagePath');
+        debugPrint('API result: $apiResult');
+        
+        if (imagePath != null) {
+          setState(() {
+            _imagePath = imagePath;
+          });
+        }
+        
+        // Process API result if available
+        if (apiResult != null) {
+          _processApiResult(apiResult);
+        }
+      } else {
+        debugPrint('No arguments received');
+      }
+    }
+  }
+
+  void _processApiResult(Map<String, dynamic> apiResult) {
+    setState(() {
+      // API returns: {pred_class, confidence, metadata, treatment_info}
+      final confidence = (apiResult['confidence'] ?? 0.0) as double;
+      final metadata = apiResult['metadata'] as Map<String, dynamic>?;
+      
+      if (metadata != null) {
+        _identificationResult = {
+          "id": apiResult['pred_class'] ?? 0,
+          "commonName": metadata['common_name'] ?? metadata['binomial_name'] ?? 'Unknown Species',
+          "scientificName": metadata['binomial_name'] ?? metadata['scientific_name'] ?? 'Unknown',
+          "family": metadata['family'] ?? 'Unknown',
+          "subfamily": metadata['subfamily'] ?? 'Unknown',
+          "genus": metadata['genus'] ?? 'Unknown',
+          "venomous": metadata['venomous']?.toString().toLowerCase() == 'true' || 
+                      metadata['venomous']?.toString() == '1' ||
+                      metadata['venomous'] == true,
+          "confidence": confidence * 100,
+          "distribution": metadata['distribution'] ?? metadata['geographic_range'] ?? 'Data not available',
+          "characteristics": metadata['characteristics'] ?? metadata['description'] ?? 'No description available',
+          "habitat": metadata['habitat'] ?? 'Data not available',
+          "warningMessage": metadata['warning_message'] ?? (
+            (metadata['venomous']?.toString().toLowerCase() == 'true' || metadata['venomous'] == true)
+                ? 'This species is venomous - seek immediate medical attention if bitten'
+                : 'This species is non-venomous'
+          ),
+          "imageUrl": _imagePath ?? '',
+        };
+        
+        // No alternative predictions in this API response format
+        // The API returns single prediction, not a list
+        _alternativeSpecies = [];
+      } else {
+        // Fallback if no metadata
+        _identificationResult = {
+          "id": apiResult['pred_class'] ?? 0,
+          "commonName": "Species ID: ${apiResult['pred_class']}",
+          "scientificName": "Unknown",
+          "family": "Unknown",
+          "subfamily": "Unknown",
+          "genus": "Unknown",
+          "venomous": false,
+          "confidence": confidence * 100,
+          "distribution": "Data not available",
+          "characteristics": "Species identified but detailed information not available",
+          "habitat": "Data not available",
+          "warningMessage": "Unable to retrieve species details",
+          "imageUrl": _imagePath ?? '',
+        };
+        _alternativeSpecies = [];
+      }
+    });
   }
 
   Future<void> _checkConnectivity() async {
@@ -246,11 +294,86 @@ class _SpeciesIdentificationResultsState
                         borderRadius: BorderRadius.circular(16),
                         child: Stack(
                           children: [
-                            CustomImageWidget(
-                              imageUrl: _identificationResult['imageUrl'] ?? '',
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
+                            // Display local file image if available, otherwise use network image
+                            Builder(
+                              builder: (context) {
+                                debugPrint('Building image widget. Path: $_imagePath');
+                                
+                                if (_imagePath != null && _imagePath!.isNotEmpty) {
+                                  final file = File(_imagePath!);
+                                  final exists = file.existsSync();
+                                  debugPrint('File exists: $exists');
+                                  
+                                  return Image.file(
+                                    file,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      debugPrint('Image error: $error');
+                                      return Container(
+                                        color: Colors.grey[300],
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.broken_image,
+                                                size: 50,
+                                                color: Colors.grey[600],
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Failed to load image',
+                                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                              ),
+                                              Padding(
+                                                padding: EdgeInsets.all(8),
+                                                child: Text(
+                                                  error.toString(),
+                                                  style: TextStyle(fontSize: 10, color: Colors.red),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                } else if (_identificationResult['imageUrl'] != null &&
+                                    _identificationResult['imageUrl'].toString().isNotEmpty) {
+                                  debugPrint('Using network image: ${_identificationResult['imageUrl']}');
+                                  return CustomImageWidget(
+                                    imageUrl: _identificationResult['imageUrl'] ?? '',
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.cover,
+                                  );
+                                } else {
+                                  debugPrint('No image available');
+                                  return Container(
+                                    color: Colors.grey[300],
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.image_not_supported,
+                                            size: 50,
+                                            color: Colors.grey[600],
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'No image available',
+                                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
                             ),
                             // Confidence badge overlay
                             Positioned(

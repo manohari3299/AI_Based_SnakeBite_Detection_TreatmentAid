@@ -49,6 +49,24 @@ app.*.map.json
 # Environment files
 .env*
 env.json
+lib/config/api_config.dart
 
 # SDK folder (don't commit the entire Flutter SDK)
 sdk/
+
+# Backend Python files
+Integrate_detect/__pycache__/
+Integrate_detect/**/__pycache__/
+Integrate_detect/*.pyc
+Integrate_detect/**/*.pyc
+Integrate_detect/models/*.pkl
+Integrate_detect/models/*.pth
+Integrate_detect/models/*.gguf
+Integrate_detect/archive/
+Integrate_detect/.env
+
+# Large model files
+*.pkl
+*.pth
+*.gguf
+*.h5

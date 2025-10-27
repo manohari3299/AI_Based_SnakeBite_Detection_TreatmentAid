@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../config/api_config.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -10,12 +11,10 @@ class ApiService {
 
   late final Dio _dio;
   
-  // Use your computer's local IP address when testing on a physical device
-  // Find it using: ipconfig (Windows) or ifconfig (Mac/Linux)
-  // For emulator: use 10.0.2.2
-  // For physical device: use your computer's IP (e.g., 192.168.1.100)
-  static const String _baseUrl = 'http://10.123.198.19:8000'; // Your laptop's IP!
-  static const String _apiKey = 'changeme'; // Match your backend API_KEY
+  // Configuration is now loaded from api_config.dart
+  // See lib/config/api_config.template.dart for setup instructions
+  static String get _baseUrl => ApiConfig.baseUrl;
+  static String get _apiKey => ApiConfig.apiKey;
   
   void initialize() {
     _dio = Dio(

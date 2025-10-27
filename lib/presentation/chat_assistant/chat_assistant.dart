@@ -80,13 +80,23 @@ class _ChatAssistantState extends State<ChatAssistant> {
   }
 
   Future<void> _initializeConnectivity() async {
-    final ConnectivityResult connectivityResult =
-        await Connectivity().checkConnectivity();
-    _updateConnectionStatus(connectivityResult);
+    try {
+      final ConnectivityResult connectivityResult =
+          await Connectivity().checkConnectivity();
+      _updateConnectionStatus(connectivityResult);
 
-    _connectivitySubscription = Connectivity()
-        .onConnectivityChanged
-        .listen((result) => _updateConnectionStatus(result));
+      _connectivitySubscription = Connectivity()
+          .onConnectivityChanged
+          .listen((result) => _updateConnectionStatus(result));
+    } catch (e) {
+      debugPrint('Connectivity initialization error: $e');
+      // Default to offline mode if connectivity check fails
+      if (mounted) {
+        setState(() {
+          _isOnline = false;
+        });
+      }
+    }
   }
 
   void _updateConnectionStatus(ConnectivityResult connectivityResult) {
@@ -110,23 +120,28 @@ class _ChatAssistantState extends State<ChatAssistant> {
   }
 
   void _loadInitialMessages() {
-    setState(() {
-      _messages.addAll([
-        {
-          "message":
-              "Welcome to SnakeBite AI Assistant! I'm here to help with emergency snake identification and treatment guidance.",
-          "isUser": false,
-          "source": _isOnline ? "AI Medical Assistant" : "Local Database",
-          "timestamp": DateTime.now().subtract(const Duration(minutes: 1)),
-        },
-        {
-          "message":
-              "You can ask me about symptoms, first aid procedures, antivenom information, or use the quick actions below.",
-          "isUser": false,
-          "source": _isOnline ? "AI Medical Assistant" : "Local Database",
-          "timestamp": DateTime.now(),
-        },
-      ]);
+    // Delay slightly to ensure connectivity check completes
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        setState(() {
+          _messages.addAll([
+            {
+              "message":
+                  "Welcome to SnakeBite AI Assistant! I'm here to help with emergency snake identification and treatment guidance.",
+              "isUser": false,
+              "source": _isOnline ? "AI Medical Assistant" : "Local Database",
+              "timestamp": DateTime.now().subtract(const Duration(minutes: 1)),
+            },
+            {
+              "message":
+                  "You can ask me about symptoms, first aid procedures, antivenom information, or use the quick actions below.",
+              "isUser": false,
+              "source": _isOnline ? "AI Medical Assistant" : "Local Database",
+              "timestamp": DateTime.now(),
+            },
+          ]);
+        });
+      }
     });
   }
 
@@ -232,22 +247,6 @@ class _ChatAssistantState extends State<ChatAssistant> {
     }
 
     return "I found some general guidance: For any snakebite emergency, keep the victim calm, remove tight clothing/jewelry, clean the wound gently, and seek immediate medical attention. Do not cut the wound or apply ice. Call emergency services immediately.";
-  }
-
-  String _generateAIResponse(String query) {
-    final lowerQuery = query.toLowerCase();
-
-    if (lowerQuery.contains('symptom')) {
-      return "Based on current medical protocols, snakebite symptoms can vary significantly by species. Early signs include puncture marks, localized pain and swelling, nausea, and potential systemic effects like difficulty breathing or altered heart rate. The severity and progression depend on the snake species, venom amount, and victim's health. Immediate medical evaluation is crucial for proper assessment and potential antivenom administration.";
-    } else if (lowerQuery.contains('first aid') ||
-        lowerQuery.contains('treatment')) {
-      return "Current emergency protocols recommend: 1) Keep victim calm and immobile, 2) Remove constricting items before swelling, 3) Position bite below heart level if possible, 4) Clean wound with soap and water, 5) Apply loose bandage above bite, 6) Mark swelling progression, 7) Transport to medical facility immediately. Avoid traditional remedies like cutting, suction, ice, or tourniquets as these can worsen outcomes.";
-    } else if (lowerQuery.contains('antivenom') ||
-        lowerQuery.contains('hospital')) {
-      return "Antivenom availability varies by region and snake species. Major trauma centers typically stock polyvalent antivenoms effective against multiple local species. Contact your regional poison control center or emergency services for specific availability. Time is critical - antivenom is most effective within 4-6 hours of envenomation. Provide medical staff with snake identification if safely possible.";
-    } else {
-      return "I'm here to provide evidence-based guidance for snakebite emergencies. I can help with symptom identification, first aid procedures, antivenom information, and emergency protocols. For immediate life-threatening situations, please call emergency services first, then use this assistant for additional guidance while awaiting medical care.";
-    }
   }
 
   void _handleVoiceInput() {

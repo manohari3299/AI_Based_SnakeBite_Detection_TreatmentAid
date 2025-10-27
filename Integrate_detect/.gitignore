@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Model files (too large for git)
+models/*.pkl
+models/*.pth
+models/*.gguf
+models/*.pt
+models/*.h5
+
+# Keep the models directory structure but ignore large files
+!models/.gitkeep
+
+# Environment variables and secrets
+.env
+.env.local
+env.json
+*.key
+
+# Data files
+*.csv
+*.xlsx
+*.json
+!requirements*.txt
+
+# Keep archive directory structure
+!archive/.gitkeep
+!archive/README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
