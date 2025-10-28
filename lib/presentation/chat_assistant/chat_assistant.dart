@@ -65,7 +65,7 @@ class _ChatAssistantState extends State<ChatAssistant> {
   @override
   void initState() {
     super.initState();
-    _apiService.initialize();
+    // ApiService is already initialized in main.dart, no need to initialize again
     _initializeConnectivity();
     _loadInitialMessages();
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../presentation/splash_screen/splash_screen.dart';
 import '../presentation/landing_page/landing_page.dart';
 import '../presentation/species_identification_results/species_identification_results.dart';
 import '../presentation/treatment_protocols/treatment_protocols.dart';
@@ -10,6 +11,7 @@ import '../presentation/camera_capture/camera_capture.dart';
 class AppRoutes {
   // TODO: Add your routes here
   static const String initial = '/';
+  static const String splashScreen = '/splash-screen';
   static const String landingPage = '/landing-page';
   static const String speciesIdentificationResults =
       '/species-identification-results';
@@ -20,7 +22,8 @@ class AppRoutes {
   static const String cameraCapture = '/camera-capture';
 
   static Map<String, WidgetBuilder> routes = {
-    initial: (context) => const LandingPage(),
+    initial: (context) => const SplashScreen(),
+    splashScreen: (context) => const SplashScreen(),
     landingPage: (context) => const LandingPage(),
     speciesIdentificationResults: (context) =>
         const SpeciesIdentificationResults(),

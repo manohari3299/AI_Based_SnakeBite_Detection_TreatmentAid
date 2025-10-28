@@ -187,7 +187,13 @@ async def api_predict_species(
     if not species_row.empty:
         row = species_row.iloc[0].to_dict()
         binomial_name = row.get('binomial_name')
-        result["metadata"] = {k: (v if not pd.isna(v) else None) for k, v in row.items()}
+        
+        # Convert poisonous to venomous for compatibility
+        metadata = {k: (v if not pd.isna(v) else None) for k, v in row.items()}
+        if 'poisonous' in metadata:
+            metadata['venomous'] = metadata['poisonous']  # Add venomous field for Flutter app
+        
+        result["metadata"] = metadata
         
         # Store and log species context
         if user_id and binomial_name:
@@ -221,6 +227,77 @@ async def api_predict_bite(file: UploadFile = File(...), _=Depends(verify_api_ke
     return {"label": label, "confidence": float(confidence)}
 
 
+def _generate_fallback_response(message: str, species_info: dict = None, treatment_info: dict = None) -> str:
+    """Generate intelligent fallback response when LLM is not available."""
+    message_lower = message.lower()
+    
+    # If we have species and treatment info, provide specific information
+    if species_info and treatment_info:
+        if any(word in message_lower for word in ['treatment', 'what should', 'what do', 'help', 'first aid']):
+            response = f"For {species_info['name']} bite:\n\n"
+            if not pd.isna(treatment_info['first_aid']):
+                response += f"**Immediate First Aid:**\n{treatment_info['first_aid']}\n\n"
+            if not pd.isna(treatment_info['medical_care']):
+                response += f"**Medical Care:**\n{treatment_info['medical_care']}\n\n"
+            if not pd.isna(treatment_info['antivenom']):
+                response += f"**Antivenom:**\n{treatment_info['antivenom']}\n\n"
+            response += "⚠️ **CRITICAL: Seek immediate medical attention. Call emergency services now!**"
+            return response
+        
+        elif any(word in message_lower for word in ['venomous', 'dangerous', 'poison']):
+            response = f"**{species_info['name']}** - Venomous: {species_info['venomous']}\n\n"
+            response += f"Region: {species_info['region']}\n\n"
+            if species_info['venomous'] == 'Yes':
+                response += "This is a venomous species. If bitten, seek immediate medical attention!"
+            else:
+                response += "This is a non-venomous species. However, any bite should be evaluated by a medical professional."
+            return response
+    
+    # General snakebite advice
+    if any(word in message_lower for word in ['bite', 'bitten', 'emergency', 'help']):
+        return (
+            "**SNAKEBITE EMERGENCY PROTOCOL:**\n\n"
+            "1. **Call Emergency Services Immediately** (911 or local emergency number)\n"
+            "2. **Keep the victim calm and still** - movement speeds venom spread\n"
+            "3. **Remove jewelry/tight clothing** near the bite before swelling\n"
+            "4. **Position the bite below heart level**\n"
+            "5. **Clean the wound gently** with soap and water\n"
+            "6. **Cover with clean, dry dressing**\n\n"
+            "**DO NOT:**\n"
+            "❌ Cut the wound\n"
+            "❌ Apply ice\n"
+            "❌ Apply tourniquet\n"
+            "❌ Try to suck out venom\n\n"
+            "⚠️ **Time is critical! Get to a hospital immediately!**"
+        )
+    
+    # Symptoms query
+    if any(word in message_lower for word in ['symptom', 'sign']):
+        return (
+            "**Common Venomous Snakebite Symptoms:**\n\n"
+            "• Pain and swelling at bite site\n"
+            "• Puncture marks (may be faint)\n"
+            "• Redness and bruising\n"
+            "• Difficulty breathing\n"
+            "• Nausea and vomiting\n"
+            "• Blurred vision\n"
+            "• Sweating and salivating\n"
+            "• Numbness or tingling\n\n"
+            "**If you experience any of these symptoms after a snakebite, seek immediate medical attention!**"
+        )
+    
+    # Default helpful response
+    return (
+        "I can help you with snakebite information and treatment guidance. "
+        "You can ask me about:\n\n"
+        "• First aid for snakebites\n"
+        "• Symptoms to watch for\n"
+        "• Treatment protocols\n"
+        "• Snake species information\n\n"
+        "**Remember: For any snakebite emergency, call emergency services immediately!**"
+    )
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def api_chat(req: ChatRequest, _=Depends(verify_api_key)):
     """Enhanced chat endpoint with species context, treatment data, and conversation history.
@@ -230,10 +307,6 @@ async def api_chat(req: ChatRequest, _=Depends(verify_api_key)):
     logger.info(f"[CHAT DEBUG] Starting chat request. LLM is None: {LLM is None}")
     
     try:
-        if LLM is None:
-            return {"response": "Sorry, the AI assistant is not available at the moment. Please try again later."}
-            
-        logger.info("[CHAT DEBUG] LLM is available, continuing...")
         # Initialize or get conversation history
         conv_id = req.conversation_id or str(uuid.uuid4())
         if conv_id not in chat_histories:
@@ -252,26 +325,39 @@ async def api_chat(req: ChatRequest, _=Depends(verify_api_key)):
         logger.debug("Building context with species_name: %s", species_name)
         
         # Add species and treatment info if available
+        treatment_info = None
+        species_info = None
+        
         if species_name and SPECIES_DF is not None:
             species_data = SPECIES_DF[SPECIES_DF["binomial_name"] == species_name]
             if not species_data.empty:
                 row = species_data.iloc[0]
+                species_info = {
+                    'name': species_name,
+                    'region': f"{row.get('country', 'Unknown')} ({row.get('continent', 'Unknown')})",
+                    'venomous': 'Yes' if row.get('poisonous') == 1 else 'No'
+                }
                 context_parts.append(f"Snake Species Information:")
                 context_parts.append(f"- Species: {species_name}")
-                context_parts.append(f"- Region: {row.get('country', 'Unknown')} ({row.get('continent', 'Unknown')})")
-                context_parts.append(f"- Venomous: {'Yes' if row.get('poisonous') == 1 else 'No'}")
+                context_parts.append(f"- Region: {species_info['region']}")
+                context_parts.append(f"- Venomous: {species_info['venomous']}")
                 
                 if TREATMENT_DF is not None:
                     treatment = TREATMENT_DF[TREATMENT_DF["scientific_name"] == species_name]
                     if not treatment.empty:
                         t_row = treatment.iloc[0]
+                        treatment_info = {
+                            'first_aid': t_row.get('immediate_first_aid_core'),
+                            'medical_care': t_row.get('initial_hospital_actions'),
+                            'antivenom': t_row.get('antivenom_name_or_type')
+                        }
                         context_parts.append("\nTreatment Protocol:")
-                        if not pd.isna(t_row.get('immediate_first_aid_core')):
-                            context_parts.append(f"- First Aid: {t_row['immediate_first_aid_core']}")
-                        if not pd.isna(t_row.get('initial_hospital_actions')):
-                            context_parts.append(f"- Medical Care: {t_row['initial_hospital_actions']}")
-                        if not pd.isna(t_row.get('antivenom_name_or_type')):
-                            context_parts.append(f"- Antivenom: {t_row['antivenom_name_or_type']}")
+                        if not pd.isna(treatment_info['first_aid']):
+                            context_parts.append(f"- First Aid: {treatment_info['first_aid']}")
+                        if not pd.isna(treatment_info['medical_care']):
+                            context_parts.append(f"- Medical Care: {treatment_info['medical_care']}")
+                        if not pd.isna(treatment_info['antivenom']):
+                            context_parts.append(f"- Antivenom: {treatment_info['antivenom']}")
         
         # Add symptom/region based context if no species identified
         elif req.symptoms or req.region:
@@ -291,6 +377,21 @@ async def api_chat(req: ChatRequest, _=Depends(verify_api_key)):
                     context_parts.append("\nPossible Species in Region:")
                     for _, sp in possible_species.head(3).iterrows():
                         context_parts.append(f"- {sp['binomial_name']} ({sp.get('common_name', 'Unknown common name')})")
+                        
+        context = "\n".join(context_parts)
+        
+        # If LLM is not available, provide intelligent fallback response
+        if LLM is None:
+            logger.info("[CHAT DEBUG] LLM not available, using fallback response")
+            response = _generate_fallback_response(req.message, species_info, treatment_info)
+            chat_histories[conv_id].append((req.message, response))
+            return {
+                "response": response,
+                "conversation_id": conv_id,
+                "species_context": species_name
+            }
+            
+        logger.info("[CHAT DEBUG] LLM is available, continuing...")
                         
         context = "\n".join(context_parts)
         
