@@ -85,7 +85,7 @@ def load_models(
     default_bite = "models/snake_bite_best_densenet.pth"
     default_species = "archive/species.csv"
     default_treatment = "archive/snakebite_treatment_aid_100species.csv.xlsx"
-    default_llm = "models/mistral-7b-instruct-v0.2.Q2_K.gguf"  # Optional
+    default_llm = "models/mistral-7b-instruct-v0.2.Q4_K_M.gguf"  # Optional - Mistral 7B Instruct (Q4 quantized, ~4GB)
 
     # ------------------- Snake Classifier (FastAI) -------------------
     snake_model_path = _resolve_path(snake_model_path_env, default_snake, required=True)
@@ -122,6 +122,7 @@ def load_models(
     if llm_model and Llama is not None:
         # Try multiple LLM init configurations (n_ctx, n_threads) to improve
         # chance of success on machines with limited memory or CPU.
+        logger.info(f"Attempting to load LLM from {llm_model}")
         cpu_count = max(1, os.cpu_count() or 1)
         attempts = [
             (4096, min(6, cpu_count)),
@@ -131,24 +132,28 @@ def load_models(
         last_exc = None
         for n_ctx, n_threads in attempts:
             try:
+                logger.info(f"Trying LLM with n_ctx={n_ctx}, n_threads={n_threads}")
                 llm = Llama(
                     model_path=str(llm_model),
                     n_ctx=n_ctx,
                     n_threads=n_threads,
                     n_batch=512,
-                    verbose=False,
+                    verbose=True,  # Enable verbose to see loading details
                 )
                 # success
+                logger.info(f"LLM loaded successfully with n_ctx={n_ctx}, n_threads={n_threads}")
                 break
             except Exception as e:
-                warnings.warn(f"LLM init failed with n_ctx={n_ctx}, n_threads={n_threads}: {e}")
+                logger.warning(f"LLM init failed with n_ctx={n_ctx}, n_threads={n_threads}: {e}")
                 last_exc = e
                 llm = None
         if llm is None and last_exc is not None:
-            warnings.warn(f"Failed to load LLM model after multiple attempts: {last_exc}; continuing with llm=None")
+            logger.error(f"Failed to load LLM model after multiple attempts: {last_exc}; continuing with llm=None")
     else:
         if llm_model and Llama is None:
-            warnings.warn("llama_cpp package not available; LLM functionality disabled")
+            logger.warning("llama_cpp package not available; LLM functionality disabled")
+        elif not llm_model:
+            logger.info("No LLM model path configured; LLM functionality disabled")
 
     return snake_model, bite_model, species_df, treatment_df, llm
 

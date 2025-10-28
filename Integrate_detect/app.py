@@ -122,6 +122,35 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/llm_status")
+def llm_status():
+    """Debug endpoint to check LLM status"""
+    return {
+        "llm_loaded": LLM is not None,
+        "llm_type": str(type(LLM)) if LLM else None,
+        "test_prompt": "Testing..." if LLM is None else "LLM available"
+    }
+
+
+@app.get("/test_llm")
+def test_llm():
+    """Simple test endpoint to verify LLM can generate text"""
+    try:
+        if LLM is None:
+            return {"error": "LLM not loaded"}
+        
+        prompt = "What is a snake bite?"
+        result = LLM(prompt, max_tokens=50)
+        return {
+            "success": True,
+            "prompt": prompt,
+            "response": result["choices"][0]["text"]
+        }
+    except Exception as e:
+        logger.error(f"LLM test error: {str(e)}", exc_info=True)
+        return {"error": str(e), "type": str(type(e))}
+
+
 @app.post("/predict_species")
 async def api_predict_species(
     file: UploadFile = File(...),
@@ -167,7 +196,7 @@ async def api_predict_species(
             
             # Add treatment info to response if available
             if TREATMENT_DF is not None:
-                treatment = TREATMENT_DF[TREATMENT_DF["binomial_name"] == binomial_name]
+                treatment = TREATMENT_DF[TREATMENT_DF["scientific_name"] == binomial_name]
                 if not treatment.empty:
                     result["treatment_info"] = treatment.iloc[0].to_dict()
                     logger.info(f"Found treatment data for species {binomial_name}")
@@ -198,11 +227,13 @@ async def api_chat(req: ChatRequest, _=Depends(verify_api_key)):
     Only the 'message' field is required. All other fields are optional with defaults.
     """
     logger.debug(f"Received message from user {req.user_id}: {req.message}")
+    logger.info(f"[CHAT DEBUG] Starting chat request. LLM is None: {LLM is None}")
     
     try:
         if LLM is None:
             return {"response": "Sorry, the AI assistant is not available at the moment. Please try again later."}
             
+        logger.info("[CHAT DEBUG] LLM is available, continuing...")
         # Initialize or get conversation history
         conv_id = req.conversation_id or str(uuid.uuid4())
         if conv_id not in chat_histories:
@@ -231,16 +262,16 @@ async def api_chat(req: ChatRequest, _=Depends(verify_api_key)):
                 context_parts.append(f"- Venomous: {'Yes' if row.get('poisonous') == 1 else 'No'}")
                 
                 if TREATMENT_DF is not None:
-                    treatment = TREATMENT_DF[TREATMENT_DF["binomial_name"] == species_name]
+                    treatment = TREATMENT_DF[TREATMENT_DF["scientific_name"] == species_name]
                     if not treatment.empty:
                         t_row = treatment.iloc[0]
                         context_parts.append("\nTreatment Protocol:")
-                        if not pd.isna(t_row.get('first_aid')):
-                            context_parts.append(f"- First Aid: {t_row['first_aid']}")
-                        if not pd.isna(t_row.get('medical_attention')):
-                            context_parts.append(f"- Medical Care: {t_row['medical_attention']}")
-                        if not pd.isna(t_row.get('antivenom')):
-                            context_parts.append(f"- Antivenom: {t_row['antivenom']}")
+                        if not pd.isna(t_row.get('immediate_first_aid_core')):
+                            context_parts.append(f"- First Aid: {t_row['immediate_first_aid_core']}")
+                        if not pd.isna(t_row.get('initial_hospital_actions')):
+                            context_parts.append(f"- Medical Care: {t_row['initial_hospital_actions']}")
+                        if not pd.isna(t_row.get('antivenom_name_or_type')):
+                            context_parts.append(f"- Antivenom: {t_row['antivenom_name_or_type']}")
         
         # Add symptom/region based context if no species identified
         elif req.symptoms or req.region:
@@ -286,9 +317,12 @@ async def api_chat(req: ChatRequest, _=Depends(verify_api_key)):
         
         prompt += f"\nUser: {req.message}\nAssistant:"
         
+        logger.info(f"[CHAT DEBUG] Calling LLM with prompt length: {len(prompt)}")
         # Get response from LLM
         out = LLM(prompt, max_tokens=1024)
+        logger.info(f"[CHAT DEBUG] LLM returned: {type(out)}")
         response = out["choices"][0]["text"].strip()
+        logger.info(f"[CHAT DEBUG] Extracted response length: {len(response)}")
         
         # Update conversation history
         chat_histories[conv_id].append([req.message, response])
@@ -302,10 +336,13 @@ async def api_chat(req: ChatRequest, _=Depends(verify_api_key)):
         
     except Exception as e:
         logger.error(f"Error in chat handling: {str(e)}", exc_info=True)
+        import traceback
         return {
             "response": "I apologize, but I encountered an error. Please try again in a moment.",
             "conversation_id": req.conversation_id,
-            "species_context": None
+            "species_context": None,
+            "debug_error": str(e),
+            "debug_traceback": traceback.format_exc()
         }
 
     q = req.user_input.lower()
