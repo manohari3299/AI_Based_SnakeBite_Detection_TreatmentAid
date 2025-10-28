@@ -10,7 +10,6 @@ import '../../services/api_service.dart';
 import './widgets/connectivity_status_widget.dart';
 import './widgets/message_bubble_widget.dart';
 import './widgets/message_input_widget.dart';
-import './widgets/quick_action_button_widget.dart';
 
 class ChatAssistant extends StatefulWidget {
   const ChatAssistant({Key? key}) : super(key: key);
@@ -290,11 +289,6 @@ class _ChatAssistantState extends State<ChatAssistant> {
     }
   }
 
-  void _handleQuickAction(String action) {
-    _messageController.text = action;
-    _sendMessage();
-  }
-
   void _showMessageOptions(String message) {
     showModalBottomSheet(
       context: context,
@@ -420,7 +414,6 @@ class _ChatAssistantState extends State<ChatAssistant> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          _buildQuickActions(),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refreshMessages,
@@ -503,56 +496,6 @@ class _ChatAssistantState extends State<ChatAssistant> {
         ConnectivityStatusWidget(isOnline: _isOnline),
         SizedBox(width: 4.w),
       ],
-    );
-  }
-
-  Widget _buildQuickActions() {
-    return Container(
-      padding: EdgeInsets.all(4.w),
-      color: AppTheme.lightTheme.colorScheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Emergency Actions',
-            style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 2.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              QuickActionButtonWidget(
-                title: 'Identify Symptoms',
-                iconName: 'search',
-                onTap: () => _handleQuickAction('Identify symptoms'),
-              ),
-              QuickActionButtonWidget(
-                title: 'Find Hospital',
-                iconName: 'local_hospital',
-                onTap: () => _handleQuickAction('Find nearest hospital'),
-              ),
-            ],
-          ),
-          SizedBox(height: 2.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              QuickActionButtonWidget(
-                title: 'Antivenom Info',
-                iconName: 'medication',
-                onTap: () => _handleQuickAction('Antivenom availability'),
-              ),
-              QuickActionButtonWidget(
-                title: 'First Aid Steps',
-                iconName: 'healing',
-                onTap: () => _handleQuickAction('First aid steps'),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
