@@ -179,6 +179,8 @@ class _ChatAssistantState extends State<ChatAssistant> {
 
   Future<void> _processOnlineQuery(String query) async {
     try {
+      debugPrint('🔍 Attempting online query: $query');
+      
       // Call the FastAPI backend with LLM
       final response = await _apiService.chat(
         message: query,
@@ -186,6 +188,8 @@ class _ChatAssistantState extends State<ChatAssistant> {
         conversationId: _conversationId,
         speciesName: _currentSpeciesName,
       );
+
+      debugPrint('✅ Response received successfully');
 
       // Update conversation ID
       if (response.containsKey('conversation_id')) {
@@ -209,7 +213,8 @@ class _ChatAssistantState extends State<ChatAssistant> {
         });
       });
     } catch (e) {
-      debugPrint('Online query error: $e');
+      debugPrint('❌ Online query error: $e');
+      debugPrint('❌ Error type: ${e.runtimeType}');
       
       // Fallback to local response if API fails
       setState(() {

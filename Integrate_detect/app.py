@@ -192,6 +192,8 @@ async def api_predict_species(
         metadata = {k: (v if not pd.isna(v) else None) for k, v in row.items()}
         if 'poisonous' in metadata:
             metadata['venomous'] = metadata['poisonous']  # Add venomous field for Flutter app
+        if 'snake_sub_family' in metadata:
+            metadata['subfamily'] = metadata['snake_sub_family']  # Add subfamily alias for Flutter app
         
         result["metadata"] = metadata
         
