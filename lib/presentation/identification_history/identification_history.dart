@@ -128,7 +128,7 @@ class _IdentificationHistoryState extends State<IdentificationHistory>
               ],
               onTap: (index) {
                 if (index == 0) {
-                  Navigator.pushReplacementNamed(context, '/home-dashboard');
+                  Navigator.pushReplacementNamed(context, '/landing-page');
                 }
               },
             ),

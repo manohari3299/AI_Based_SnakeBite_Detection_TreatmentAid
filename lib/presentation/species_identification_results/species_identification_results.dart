@@ -570,7 +570,7 @@ class _SpeciesIdentificationResultsState
                               onPressed: () {
                                 Navigator.pushNamedAndRemoveUntil(
                                   context,
-                                  '/home-dashboard',
+                                  '/landing-page',
                                   (route) => false,
                                 );
                               },

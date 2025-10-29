@@ -91,7 +91,7 @@ class EmptyStateWidget extends StatelessWidget {
             // Secondary action
             OutlinedButton.icon(
               onPressed: () {
-                Navigator.pushNamed(context, '/home-dashboard');
+                Navigator.pushNamed(context, '/landing-page');
               },
               icon: CustomIconWidget(
                 iconName: 'home',

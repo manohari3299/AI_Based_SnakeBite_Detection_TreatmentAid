@@ -327,7 +327,7 @@ class _TreatmentProtocolsState extends State<TreatmentProtocols>
           onDone: () {
             Navigator.pushNamedAndRemoveUntil(
               context,
-              '/home-dashboard',
+              '/landing-page',
               (route) => false,
             );
           },
