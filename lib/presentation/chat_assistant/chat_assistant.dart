@@ -128,14 +128,14 @@ class _ChatAssistantState extends State<ChatAssistant> {
               "message":
                   "Welcome to SnakeBite AI Assistant! I'm here to help with emergency snake identification and treatment guidance.",
               "isUser": false,
-              "source": _isOnline ? "AI Medical Assistant" : "Local Database",
+              "source": _isOnline ? "AI Medical Assistant" : "Snake AI",
               "timestamp": DateTime.now().subtract(const Duration(minutes: 1)),
             },
             {
               "message":
                   "You can ask me about symptoms, first aid procedures, antivenom information, or use the quick actions below.",
               "isUser": false,
-              "source": _isOnline ? "AI Medical Assistant" : "Local Database",
+              "source": _isOnline ? "AI Medical Assistant" : "Snake AI",
               "timestamp": DateTime.now(),
             },
           ]);
