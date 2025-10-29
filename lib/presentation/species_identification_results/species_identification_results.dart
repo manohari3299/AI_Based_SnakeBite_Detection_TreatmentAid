@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/history_service.dart';
 import './widgets/alternative_species_widget.dart';
 import './widgets/emergency_warning_widget.dart';
 import './widgets/species_confidence_widget.dart';
@@ -173,8 +174,24 @@ class _SpeciesIdentificationResultsState
     );
   }
 
-  void _saveToHistory() {
-    // Save to history functionality would be implemented here
+  Future<void> _saveToHistory() async {
+    // Prepare identification data for history
+    final historyData = {
+      'speciesName': _identificationResult['commonName'],
+      'scientificName': _identificationResult['scientificName'],
+      'isVenomous': _identificationResult['venomous'] ?? false,
+      'confidence': _identificationResult['confidence'],
+      'imageUrl': _imagePath ?? '',
+      'location': 'Unknown', // You can add location detection later
+      'family': _identificationResult['family'],
+      'treatment': _identificationResult['venomous'] == true 
+          ? 'Immediate medical attention required' 
+          : 'No medical treatment needed',
+    };
+    
+    // Save to history service
+    await HistoryService().saveIdentification(historyData);
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Saved to identification history'),

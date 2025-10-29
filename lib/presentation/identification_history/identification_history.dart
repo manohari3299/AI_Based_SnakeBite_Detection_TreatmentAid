@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/history_service.dart';
 import './widgets/empty_state_widget.dart';
 import './widgets/filter_chips_widget.dart';
 import './widgets/history_card_widget.dart';
@@ -23,81 +24,42 @@ class _IdentificationHistoryState extends State<IdentificationHistory>
   bool _isSelectionMode = false;
   Set<String> _selectedItems = {};
   bool _isOnline = true;
-  int _pendingSyncCount = 3;
+  int _pendingSyncCount = 0;
 
-  // Mock data for identification history
-  final List<Map<String, dynamic>> _identificationHistory = [
-    {
-      "id": "1",
-      "speciesName": "Eastern Diamondback Rattlesnake",
-      "scientificName": "Crotalus adamanteus",
-      "isVenomous": true,
-      "confidence": 94.5,
-      "imageUrl":
-          "https://images.pexels.com/photos/33535/snake-rainbow-boa-reptile-scale.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-      "location": "Florida Everglades, FL",
-      "timestamp": DateTime.now().subtract(const Duration(hours: 2)),
-      "family": "Viperidae",
-      "treatment": "Immediate medical attention required",
-    },
-    {
-      "id": "2",
-      "speciesName": "Corn Snake",
-      "scientificName": "Pantherophis guttatus",
-      "isVenomous": false,
-      "confidence": 87.2,
-      "imageUrl":
-          "https://images.pexels.com/photos/45246/snake-python-reptile-green-45246.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-      "location": "North Carolina, NC",
-      "timestamp": DateTime.now().subtract(const Duration(hours: 6)),
-      "family": "Colubridae",
-      "treatment": "No medical treatment needed",
-    },
-    {
-      "id": "3",
-      "speciesName": "Copperhead",
-      "scientificName": "Agkistrodon contortrix",
-      "isVenomous": true,
-      "confidence": 91.8,
-      "imageUrl":
-          "https://images.pexels.com/photos/86596/snake-reptile-python-reticulated-python-86596.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-      "location": "Virginia Mountains, VA",
-      "timestamp": DateTime.now().subtract(const Duration(days: 1)),
-      "family": "Viperidae",
-      "treatment": "Monitor for symptoms, seek medical attention",
-    },
-    {
-      "id": "4",
-      "speciesName": "Black Rat Snake",
-      "scientificName": "Pantherophis obsoletus",
-      "isVenomous": false,
-      "confidence": 89.3,
-      "imageUrl":
-          "https://images.pexels.com/photos/34426/snake-rainbow-boa-reptile-scale.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-      "location": "Tennessee Valley, TN",
-      "timestamp": DateTime.now().subtract(const Duration(days: 2)),
-      "family": "Colubridae",
-      "treatment": "No medical treatment needed",
-    },
-    {
-      "id": "5",
-      "speciesName": "Timber Rattlesnake",
-      "scientificName": "Crotalus horridus",
-      "isVenomous": true,
-      "confidence": 96.1,
-      "imageUrl":
-          "https://images.pexels.com/photos/62289/yemen-chameleon-chamaeleo-calyptratus-chameleon-reptile-62289.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-      "location": "Pennsylvania Woods, PA",
-      "timestamp": DateTime.now().subtract(const Duration(days: 3)),
-      "family": "Viperidae",
-      "treatment": "Emergency medical attention required",
-    },
-  ];
+  // Real identification history loaded from storage
+  List<Map<String, dynamic>> _identificationHistory = [];
+  bool _isLoadingHistory = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    setState(() {
+      _isLoadingHistory = true;
+    });
+
+    try {
+      final history = await HistoryService().getHistory();
+      setState(() {
+        _identificationHistory = history.map((item) {
+          // Convert timestamp string back to DateTime if it's stored as string
+          if (item['timestamp'] is String) {
+            item['timestamp'] = DateTime.parse(item['timestamp']);
+          }
+          return item;
+        }).toList();
+        _isLoadingHistory = false;
+      });
+    } catch (e) {
+      print('Error loading history: $e');
+      setState(() {
+        _isLoadingHistory = false;
+      });
+    }
   }
 
   @override
@@ -203,9 +165,13 @@ class _IdentificationHistoryState extends State<IdentificationHistory>
 
           // Content
           Expanded(
-            child: _filteredHistory.isEmpty
-                ? _buildEmptyState()
-                : _buildHistoryList(),
+            child: _isLoadingHistory
+                ? Center(
+                    child: CircularProgressIndicator(),
+                  )
+                : _filteredHistory.isEmpty
+                    ? _buildEmptyState()
+                    : _buildHistoryList(),
           ),
         ],
       ),
@@ -396,11 +362,11 @@ class _IdentificationHistoryState extends State<IdentificationHistory>
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              setState(() {
-                _identificationHistory
-                    .removeWhere((item) => item['id'] == identification['id']);
-              });
+            onPressed: () async {
+              // Delete from history service
+              await HistoryService().deleteIdentification(identification['id']);
+              // Reload history
+              await _loadHistory();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Identification deleted')),
@@ -497,8 +463,8 @@ class _IdentificationHistoryState extends State<IdentificationHistory>
   }
 
   Future<void> _refreshHistory() async {
-    // Simulate refresh delay
-    await Future.delayed(const Duration(seconds: 1));
+    // Reload history from storage
+    await _loadHistory();
 
     setState(() {
       _isOnline = true;
@@ -610,10 +576,11 @@ class _IdentificationHistoryState extends State<IdentificationHistory>
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              setState(() {
-                _identificationHistory.clear();
-              });
+            onPressed: () async {
+              // Clear history from service
+              await HistoryService().clearHistory();
+              // Reload history
+              await _loadHistory();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('History cleared')),
@@ -660,10 +627,12 @@ class _IdentificationHistoryState extends State<IdentificationHistory>
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              // Delete from history service
+              await HistoryService().deleteMultiple(_selectedItems);
+              // Reload history
+              await _loadHistory();
               setState(() {
-                _identificationHistory
-                    .removeWhere((item) => _selectedItems.contains(item['id']));
                 _selectedItems.clear();
                 _isSelectionMode = false;
               });
