@@ -560,6 +560,49 @@ class _SpeciesIdentificationResultsState
                               ),
                             ],
                           ),
+
+                          SizedBox(height: 2.h),
+
+                          // Done Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.pushNamedAndRemoveUntil(
+                                  context,
+                                  '/home-dashboard',
+                                  (route) => false,
+                                );
+                              },
+                              icon: CustomIconWidget(
+                                iconName: 'check_circle',
+                                color: AppTheme.lightTheme.colorScheme.secondary,
+                                size: 18,
+                              ),
+                              label: Text(
+                                'Done',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge
+                                    ?.copyWith(
+                                      color: AppTheme.lightTheme.colorScheme.secondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 2.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                side: BorderSide(
+                                  color: AppTheme.lightTheme.colorScheme.secondary,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          SizedBox(height: 4.h),
                         ],
                       ),
                     ),
