@@ -43,10 +43,10 @@ class _SplashScreenState extends State<SplashScreen>
     // Rotation animation controller for spinning logo
     _rotationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1500),
     )..repeat(); // Continuously repeat the rotation
 
-    _rotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 4.0).animate(
       CurvedAnimation(parent: _rotationController, curve: Curves.easeInOut),
     );
 
