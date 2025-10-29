@@ -7,12 +7,14 @@ class QuickActionsBar extends StatelessWidget {
   final VoidCallback onCallEmergency;
   final VoidCallback onShareProtocol;
   final VoidCallback onPrintInstructions;
+  final VoidCallback? onDone;
 
   const QuickActionsBar({
     Key? key,
     required this.onCallEmergency,
     required this.onShareProtocol,
     required this.onPrintInstructions,
+    this.onDone,
   }) : super(key: key);
 
   @override
@@ -29,34 +31,73 @@ class QuickActionsBar extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: _buildActionButton(
-              label: 'Call 911',
-              iconName: 'phone',
-              color: AppTheme.lightTheme.colorScheme.error,
-              onPressed: onCallEmergency,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  label: 'Call 911',
+                  iconName: 'phone',
+                  color: AppTheme.lightTheme.colorScheme.error,
+                  onPressed: onCallEmergency,
+                ),
+              ),
+              SizedBox(width: 2.w),
+              Expanded(
+                child: _buildActionButton(
+                  label: 'Share',
+                  iconName: 'share',
+                  color: AppTheme.lightTheme.colorScheme.tertiary,
+                  onPressed: onShareProtocol,
+                ),
+              ),
+              SizedBox(width: 2.w),
+              Expanded(
+                child: _buildActionButton(
+                  label: 'Print',
+                  iconName: 'print',
+                  color: AppTheme.lightTheme.colorScheme.secondary,
+                  onPressed: onPrintInstructions,
+                ),
+              ),
+            ],
           ),
-          SizedBox(width: 2.w),
-          Expanded(
-            child: _buildActionButton(
-              label: 'Share',
-              iconName: 'share',
-              color: AppTheme.lightTheme.colorScheme.tertiary,
-              onPressed: onShareProtocol,
+          if (onDone != null) ...[
+            SizedBox(height: 2.h),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onDone,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.lightTheme.colorScheme.secondary.withValues(alpha: 0.1),
+                  foregroundColor: AppTheme.lightTheme.colorScheme.secondary,
+                  elevation: 0,
+                  padding: EdgeInsets.symmetric(vertical: 1.5.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(
+                      color: AppTheme.lightTheme.colorScheme.secondary,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+                icon: CustomIconWidget(
+                  iconName: 'check_circle',
+                  color: AppTheme.lightTheme.colorScheme.secondary,
+                  size: 18.sp,
+                ),
+                label: Text(
+                  'Done',
+                  style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
+                    color: AppTheme.lightTheme.colorScheme.secondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ),
-          ),
-          SizedBox(width: 2.w),
-          Expanded(
-            child: _buildActionButton(
-              label: 'Print',
-              iconName: 'print',
-              color: AppTheme.lightTheme.colorScheme.secondary,
-              onPressed: onPrintInstructions,
-            ),
-          ),
+          ],
         ],
       ),
     );

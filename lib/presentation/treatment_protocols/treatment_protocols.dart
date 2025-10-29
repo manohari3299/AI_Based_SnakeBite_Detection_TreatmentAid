@@ -324,6 +324,13 @@ class _TreatmentProtocolsState extends State<TreatmentProtocols>
           onCallEmergency: _callEmergencyServices,
           onShareProtocol: _shareProtocol,
           onPrintInstructions: _printInstructions,
+          onDone: () {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home-dashboard',
+              (route) => false,
+            );
+          },
         ),
       ),
     );
