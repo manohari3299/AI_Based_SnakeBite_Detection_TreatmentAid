@@ -409,43 +409,59 @@ class _ChatAssistantState extends State<ChatAssistant> {
 
   @override
   Widget build(BuildContext context) {
+    final isWideScreen = MediaQuery.of(context).size.width > 900;
+    final maxWidth = isWideScreen ? 1000.0 : double.infinity;
+    
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
       appBar: _buildAppBar(),
-      body: Column(
-        children: [
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshMessages,
-              color: AppTheme.lightTheme.primaryColor,
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: EdgeInsets.symmetric(vertical: 2.h),
-                itemCount: _messages.length + (_isLoading ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == _messages.length && _isLoading) {
-                    return _buildLoadingIndicator();
-                  }
+      body: Center(
+        child: Container(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Column(
+            children: [
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _refreshMessages,
+                  color: AppTheme.lightTheme.primaryColor,
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: EdgeInsets.symmetric(
+                      vertical: isWideScreen ? 24 : 2.h,
+                      horizontal: isWideScreen ? 24 : 0,
+                    ),
+                    itemCount: _messages.length + (_isLoading ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _messages.length && _isLoading) {
+                        return _buildLoadingIndicator();
+                      }
 
-                  final message = _messages[index];
-                  return MessageBubbleWidget(
-                    message: message["message"],
-                    isUser: message["isUser"],
-                    source: message["source"],
-                    timestamp: message["timestamp"],
-                    onLongPress: () => _showMessageOptions(message["message"]),
-                  );
-                },
+                      final message = _messages[index];
+                      return MessageBubbleWidget(
+                        message: message["message"],
+                        isUser: message["isUser"],
+                        source: message["source"],
+                        timestamp: message["timestamp"],
+                        onLongPress: () => _showMessageOptions(message["message"]),
+                      );
+                    },
+                  ),
+                ),
               ),
-            ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isWideScreen ? 24 : 0,
+                ),
+                child: MessageInputWidget(
+                  controller: _messageController,
+                  onSend: _sendMessage,
+                  onVoiceInput: _handleVoiceInput,
+                  isRecording: _isRecording,
+                ),
+              ),
+            ],
           ),
-          MessageInputWidget(
-            controller: _messageController,
-            onSend: _sendMessage,
-            onVoiceInput: _handleVoiceInput,
-            isRecording: _isRecording,
-          ),
-        ],
+        ),
       ),
     );
   }
